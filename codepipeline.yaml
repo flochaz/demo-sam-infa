@@ -32,7 +32,7 @@ Parameters:
     Default: "GitHub"
   FullRepositoryId:
     Type: String
-    Default: "flochaz/proton-demo"
+    Default: "flochaz/demo-sam-infra"
   MainGitBranch:
     Type: String
     Default: "main"
@@ -106,12 +106,6 @@ Resources:
     Properties:
       ConnectionName: GitRepositoryConnection
       ProviderType: !Ref GitProviderType
-  CodeStarConnection2:
-    Condition: CreateConnection
-    Type: AWS::CodeStarConnections::Connection
-    Properties:
-      ConnectionName: GitRepositoryConnection2
-      ProviderType: !Ref GitProviderType
 
   #  ____  _            _ _
   # |  _ \(_)_ __   ___| (_)_ __   ___
@@ -142,19 +136,6 @@ Resources:
                 BranchName: !If [IsFeatureBranchPipeline, !Ref FeatureGitBranch, !Ref MainGitBranch]
               OutputArtifacts:
                 - Name: SourceCodeAsZip
-              RunOrder: 1
-            - Name: SourceCodeRepo2
-              ActionTypeId:
-                Category: Source
-                Owner: AWS
-                Provider: CodeStarSourceConnection
-                Version: "1"
-              Configuration:
-                ConnectionArn: !If [CreateConnection, !Ref CodeStarConnection2, !Ref CodeStarConnectionArn]
-                FullRepositoryId: !Ref FullRepositoryId
-                BranchName: !If [IsFeatureBranchPipeline, !Ref FeatureGitBranch, !Ref MainGitBranch]
-              OutputArtifacts:
-                - Name: InfrastructureCodeAsZip
               RunOrder: 1
         - Name: UpdatePipeline
           Actions:
@@ -222,7 +203,6 @@ Resources:
                   ProjectName: !Ref CodeBuildProjectBuildAndDeployFeature
                 InputArtifacts:
                   - Name: SourceCodeAsZip
-                  - Name: InfrastructureCodeAsZip
           - !Ref AWS::NoValue
 
         - !If
