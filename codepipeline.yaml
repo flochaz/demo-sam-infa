@@ -30,9 +30,12 @@ Parameters:
   GitProviderType:
     Type: String
     Default: "GitHub"
-  FullRepositoryId:
+  InfrastructureServiceFullRepositoryId:
     Type: String
     Default: "flochaz/demo-sam-infra"
+  AppFullRepositoryId:
+    Type: String
+    Default: "flochaz/demo-sam-app"
   MainGitBranch:
     Type: String
     Default: "main"
@@ -124,7 +127,7 @@ Resources:
       Stages:
         - Name: Source
           Actions:
-            - Name: SourceCodeRepo
+            - Name: InfrastructureServiceSourceCodeRepo
               ActionTypeId:
                 Category: Source
                 Owner: AWS
@@ -132,10 +135,23 @@ Resources:
                 Version: "1"
               Configuration:
                 ConnectionArn: !If [CreateConnection, !Ref CodeStarConnection, !Ref CodeStarConnectionArn]
-                FullRepositoryId: !Ref FullRepositoryId
+                FullRepositoryId: !Ref InfrastructureServiceFullRepositoryId
                 BranchName: !If [IsFeatureBranchPipeline, !Ref FeatureGitBranch, !Ref MainGitBranch]
               OutputArtifacts:
-                - Name: SourceCodeAsZip
+                - Name: InfrastructureServiceSourceCodeAsZip
+              RunOrder: 1
+            - Name: AppSourceCodeRepo
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: CodeStarSourceConnection
+                Version: "1"
+              Configuration:
+                ConnectionArn: !If [CreateConnection, !Ref CodeStarConnection, !Ref CodeStarConnectionArn]
+                FullRepositoryId: !Ref AppFullRepositoryId
+                BranchName: !If [IsFeatureBranchPipeline, !Ref FeatureGitBranch, !Ref MainGitBranch]
+              OutputArtifacts:
+                - Name: AppSourceCodeAsZip
               RunOrder: 1
         - Name: UpdatePipeline
           Actions:
@@ -150,7 +166,7 @@ Resources:
                 RoleArn: !GetAtt PipelineStackCloudFormationExecutionRole.Arn
                 StackName: !Ref AWS::StackName
                 ChangeSetName: !Sub ${AWS::StackName}-ChangeSet
-                TemplatePath: SourceCodeAsZip::codepipeline.yaml
+                TemplatePath: InfrastructureServiceSourceCodeAsZip::codepipeline.yaml
                 Capabilities: CAPABILITY_NAMED_IAM
                 ParameterOverrides: !Sub |
                   {
@@ -158,7 +174,7 @@ Resources:
                     "CodeStarConnectionArn": "${CodeStarConnectionArn}"
                   }
               InputArtifacts:
-                - Name: SourceCodeAsZip
+                - Name: InfrastructureServiceSourceCodeAsZip
               RunOrder: 1
             - Name: ExecuteChangeSet
               ActionTypeId:
@@ -187,7 +203,7 @@ Resources:
         #       Configuration:
         #         ProjectName: !Ref CodeBuildProjectUnitTest
         #       InputArtifacts:
-        #         - Name: SourceCodeAsZip
+        #         - Name: InfrastructureServiceSourceCodeAsZip
 
         - !If
           - IsFeatureBranchPipeline
@@ -202,7 +218,7 @@ Resources:
                 Configuration:
                   ProjectName: !Ref CodeBuildProjectBuildAndDeployFeature
                 InputArtifacts:
-                  - Name: SourceCodeAsZip
+                  - Name: InfrastructureServiceSourceCodeAsZip
           - !Ref AWS::NoValue
 
         - !If
@@ -217,8 +233,10 @@ Resources:
                   Version: "1"
                 Configuration:
                   ProjectName: !Ref CodeBuildProjectBuildAndPackage
+                  PrimarySource: InfrastructureServiceSourceCodeAsZip
                 InputArtifacts:
-                  - Name: SourceCodeAsZip
+                  - Name: InfrastructureServiceSourceCodeAsZip
+                  - Name: AppSourceCodeAsZip
                 OutputArtifacts:
                   - Name: BuildArtifactAsZip
           - !Ref AWS::NoValue
@@ -258,7 +276,7 @@ Resources:
               #   Configuration:
               #     ProjectName: !Ref CodeBuildProjectIntegrationTest
               #   InputArtifacts:
-              #     - Name: SourceCodeAsZip
+              #     - Name: InfrastructureServiceSourceCodeAsZip
               #   RunOrder: 2
           - !Ref AWS::NoValue
 
